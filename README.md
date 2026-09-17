@@ -52,8 +52,9 @@ D:\deeplearning4j\
 ├── training\                 # data pipeline + training (Java 11 bytecode)
 ├── benchmark\                 # 3 kịch bản benchmark
 ├── api\                       # Spring Boot: REST API + web demo tĩnh
-├── results\                   # output benchmark (CSV + JSON + summary.md)
-└── scripts\                   # PowerShell tiện ích
+├── results\                   # output benchmark (CSV + JSON + report table + charts)
+├── logs\                      # log console đầy đủ của từng lần chạy
+└── scripts\                   # PowerShell + Python tiện ích
 ```
 
 ## Dataset
@@ -73,8 +74,9 @@ số (`Time`, `V1`..`V28` đã PCA-transform, `Amount`), nhãn `Class` (0 = bìn
 | Apache Maven | 3.9.16 | Cài thủ công tại `C:\devtools\apache-maven-3.9.16` (không có trên winget) |
 | Hadoop winutils | 3.3.6 | Tại `C:\hadoop\bin` — bắt buộc để Spark chạy trên Windows |
 
-Không cần cài Python/PyTorch để chạy các script hiện có (đặc tả gốc có nhắc tới để đối
-chứng nhưng nằm ngoài phạm vi các script đã dựng).
+Không cần cài Python/PyTorch để train/benchmark (đặc tả gốc có nhắc tới để đối chứng nhưng
+nằm ngoài phạm vi các script đã dựng). Chỉ cần **Python 3 + matplotlib** nếu muốn chạy
+`scripts/plot_workspace_results.py` để xuất biểu đồ PNG (`pip install matplotlib`).
 
 ## Cài đặt lần đầu
 
@@ -112,7 +114,7 @@ mvn install -q -DskipTests
 # 3. Kịch bản 1: WorkspaceMode NONE vs ENABLED
 .\scripts\run-benchmark-1-workspace.ps1
 
-# 4. Kịch bản 2: Spark Local Scaling (threads 1,2,4,6,8)
+# 4. Kịch bản 2: Spark Local Scaling (local[1,2,4,8], mỗi cấu hình lặp 3 lần)
 .\scripts\run-benchmark-2-spark-scaling.ps1
 
 # 5. Chạy web demo + API (giữ cửa sổ này chạy)
@@ -128,21 +130,51 @@ mvn install -q -DskipTests
 Hoặc chạy `.\scripts\run-all.ps1` để tự động hoá bước 1–4 và 7 (bước 5–6 cần 2 cửa sổ
 song song nên phải chạy thủ công).
 
+### Chạy lặp nhiều lần để lấy mean ± std (khuyến nghị cho báo cáo/slide)
+
+Một lần chạy đơn có nhiễu lớn (JIT warm-up, GC, tiến trình nền của Windows). Để có số liệu
+đáng tin cậy hơn, dùng 2 script sau — cả hai tự lặp lại N lần và tính trung bình ± độ lệch
+chuẩn:
+
+```powershell
+# Kịch bản 1: WorkspaceMode, lặp 3 lần x 15 epoch, có sampling Working Set theo timestamp
+.\scripts\run-benchmark-1-repeated.ps1 -Runs 3 -Epochs 15 -BatchSize 32
+# -> results\workspace_report_table.md (bảng mean ± std)
+# -> python scripts\plot_workspace_results.py để vẽ biểu đồ PNG (xem "Trực quan hoá")
+
+# Kịch bản 2: Spark Scaling, tự lặp 3 lần x 1 epoch cho local[1,2,4,8]
+.\scripts\run-benchmark-2-spark-scaling.ps1
+# -> results\spark_scaling_report_table.md (bảng mean ± std + speedup/hiệu suất co giãn)
+```
+
+**Quan trọng**: đóng các tiến trình Java khác (đặc biệt là `run-api.ps1`) trước khi chạy —
+tiến trình nền cạnh tranh CPU/RAM sẽ làm độ lệch chuẩn tăng vọt và có thể đảo ngược kết
+luận (đã gặp thực tế: lần đo có API chạy song song cho kết quả ENABLED "không nhanh hơn",
+lần đo sạch cho ENABLED nhanh hơn ~21%).
+
 ## 3 kịch bản thực nghiệm
 
 | # | Class | Đo gì | Output |
 | --- | --- | --- | --- |
-| 1 | `WorkspaceBenchmark` | Thời gian train + bộ nhớ (heap/non-heap/native) giữa `WorkspaceMode.NONE` và `ENABLED` | `results/workspace_benchmark.{csv,json}` |
-| 2 | `SparkScalingBenchmark` | Thời gian train + throughput khi tăng số Spark executor thread (1→8) | `results/spark_scaling_benchmark.{csv,json}` |
+| 1 | `WorkspaceBenchmark` | Thời gian + bộ nhớ (heap/non-heap/native, và Working Set theo từng epoch) giữa `WorkspaceMode.NONE` và `ENABLED` | `results/workspace_benchmark.{csv,json}`, `results/workspace_report_table.md` (mean ± std qua nhiều lần chạy) |
+| 2 | `SparkScalingBenchmark` | Thời gian, throughput, tốc độ gia tăng (speedup), hiệu suất co giãn và đỉnh bộ nhớ (VmHWM) khi tăng số Spark executor thread (`local[1,2,4,8]`) | `results/spark_scaling_benchmark.{csv,json}`, `results/spark_scaling_report_table.md`, `results/spark_scaling_raw.csv` (số liệu thô từng lần) |
 | 3a | `InferenceLatencyBenchmark` | Độ trễ p50/p99 khi gọi `model.output()` trực tiếp trong JVM (in-process), batch B=1 và B=8 | `results/inference_latency_inprocess.{csv,json}` |
 | 3b | `RemoteLatencyClient` | Độ trễ p50/p99 khi gọi qua REST API (`/api/predict`, `/api/predict/batch`) | `results/inference_latency_remote.{csv,json}` |
 
-**Windows không có `VmRSS`** (chỉ số bộ nhớ chuẩn của Linux) — kịch bản 1 thay thế bằng tổ
-hợp: JVM heap qua `ManagementFactory.getMemoryMXBean()`, native/off-heap qua JavaCPP
-`Pointer.totalBytes()`, và (khi chạy qua `run-benchmark-1-workspace.ps1`) đối chiếu độc lập
-bằng `Get-Process | Select WorkingSet64, PrivateMemorySize64` lấy mẫu mỗi 500ms, ghi ra
-`results/workspace_benchmark_os_samples.csv`. Đây là ánh xạ tương đương, không phải số đo
-giống hệt VmRSS của Linux.
+**Windows không có `VmRSS`** (chỉ số bộ nhớ chuẩn của Linux) — cả 2 kịch bản đầu dùng
+**Working Set** (`Get-Process.WorkingSet64` / `PeakWorkingSet64`) làm chỉ số tương đương:
+
+- **Kịch bản 1** (`run-benchmark-1-repeated.ps1`): mỗi epoch, Java ghi timestamp +
+  `heapUsedBytes` vào `results/workspace_epoch_detail.csv`, đồng thời ghi PID của chính nó
+  ra `results/workspace_pid.txt`; một sampler PowerShell polling `Get-Process -Id <pid>`
+  mỗi 200ms suốt quá trình chạy. Script tổng hợp (`aggregate-workspace-runs.ps1`) khớp
+  timestamp của từng epoch với mẫu Working Set gần nhất, rồi tính mean ± std qua N lần chạy.
+- **Kịch bản 2** (`SparkScalingBenchmark.java`): vì tiến trình training chạy trong JVM JDK11
+  con (do `ProcessBuilder` spawn), lấy PID trực tiếp qua `Process.pid()` rồi cho một thread
+  riêng trong JVM điều phối (JDK17) polling `Get-Process -Id <pid>` mỗi 200ms suốt vòng đời
+  tiến trình con, lấy giá trị lớn nhất làm đỉnh bộ nhớ (VmHWM).
+
+Đây là ánh xạ tương đương, không phải số đo giống hệt VmRSS/VmHWM của Linux.
 
 ## Web demo
 
@@ -166,13 +198,60 @@ Các endpoint chính:
 
 Model (`training/models/fraud_mlp.zip`): **Accuracy 99.95%**, **F1 84.57%** (lớp fraud).
 
-| Kịch bản | Kết quả |
-| --- | --- |
-| 1. Workspace | `ENABLED` nhanh hơn (32.87s vs 33.63s /2 epoch) và tiết kiệm bộ nhớ rõ rệt (heap 1.05GB vs 1.48GB, native 9.8MB vs 30.5MB) |
-| 2. Spark Scaling | Throughput tăng 1391 → 3184 rec/s khi threads 1→8; thấy rõ điểm bão hòa (6→8 threads chỉ tăng nhẹ) |
-| 3. In-process vs Remote | In-process p50 ≈1.4–1.8ms; Remote (qua HTTP) p50 ≈5–7ms — chênh lệch phản ánh chi phí serialize + network round-trip |
+### Kịch bản 1 — WorkspaceMode (3 lần chạy × 15 epoch, môi trường sạch — không có tiến trình Java khác chạy song song)
+
+| Thông số | NONE | ENABLED | Chênh lệch |
+| --- | --- | --- | --- |
+| Thời gian/epoch | 11.045,0 ± 5.230,0 ms | 8.697,8 ± 3.223,1 ms | **ENABLED nhanh hơn ~21,3%** |
+| Đỉnh bộ nhớ (VmHWM) | 5.697,0 ± 246,3 MB | 5.026,6 ± 45,0 MB | **ENABLED thấp hơn ~11,8%** |
+| Tốc độ phình bộ nhớ | +158,21 ± 4,75 MB/epoch | +134,58 ± 11,36 MB/epoch | **ENABLED chậm hơn ~14,9%** (tốt hơn) |
+
+*(Lưu ý: chạy cùng lúc với tiến trình khác — ví dụ web demo API — làm độ lệch chuẩn tăng
+mạnh và có thể che mất sự khác biệt giữa 2 mode; luôn chạy trong môi trường sạch khi cần
+số liệu chính thức.)*
+
+### Kịch bản 2 — Spark Local Scaling (3 lần chạy × 1 epoch mỗi cấu hình)
+
+| Cấu hình Worker | Thời gian (ms) | Thông lượng (rec/s) | Tốc độ gia tăng | Hiệu suất co giãn | Đỉnh bộ nhớ VmHWM (MB) |
+| --- | --- | --- | --- | --- | --- |
+| local[1] | 378.615,0 ± 15.831,0 | 602 ± 25 | 1,00× (Cơ sở) | 100,0% | 4.088,7 ± 129,1 |
+| local[2] | 201.578,3 ± 18.738,4 | 1.137 ± 105 | 1,88× | 93,9% | 4.494,8 ± 148,6 |
+| local[4] | 137.368,0 ± 18.968,8 | 1.680 ± 232 | 2,76× | 68,9% | 4.273,8 ± 360,1 |
+| local[8] | 123.666,0 ± 38.950,6 | 1.958 ± 556 | 3,06× | 38,3% | 4.692,9 ± 13,8 |
+
+Hiệu suất co giãn giảm dần rõ rệt theo N (100% → 38,3%) — đúng quy luật hiệu suất giảm dần
+(diminishing returns / Amdahl's Law) khi tăng song song hóa trên cùng một máy.
+
+### Kịch bản 3 — In-process vs Remote
+
+| Batch | In-process p50 | Remote (HTTP) p50 |
+| --- | --- | --- |
+| B=1 | ≈1,4 ms | ≈5–7 ms |
+| B=8 | ≈1,8 ms | ≈5–7 ms |
+
+Chênh lệch phản ánh chi phí serialize JSON + network round-trip khi gọi qua REST API so với
+gọi hàm trực tiếp trong cùng JVM.
 
 Xem `results/summary.md` để có bảng đầy đủ (copy trực tiếp vào slide).
+
+## Trực quan hoá
+
+Hai cách để xem biểu đồ thời gian/bộ nhớ theo từng epoch (kịch bản 1):
+
+1. **Ảnh tĩnh (matplotlib)** — dùng để dán vào slide/Word:
+   ```powershell
+   python scripts\plot_workspace_results.py
+   ```
+   Đọc trực tiếp từ `results/workspace_runs/epoch_detail_run*.csv` +
+   `os_samples_run*.csv` (tự khớp timestamp), xuất ra:
+   - `results/charts/workspace_time_per_epoch.png`
+   - `results/charts/workspace_vmrss_per_epoch.png`
+
+   Mỗi ảnh vẽ đường trung bình ± dải ±1 độ lệch chuẩn cho cả 2 mode qua 15 epoch.
+
+2. **Trang tương tác (HTML)** — có hover xem giá trị chính xác từng epoch + bảng dữ liệu,
+   dựng từ `results/workspace_chart_data.json` (sinh bởi cùng logic khớp timestamp, có thể
+   tái tạo bằng một script Python nhỏ nếu cần dựng lại trang).
 
 ## Sự cố đã gặp & cách khắc phục (Windows)
 
@@ -213,6 +292,16 @@ khăn/giải pháp" khi thuyết trình:
    cần (thiếu class `StreamWriteException` từ Jackson 2.12+). **Giải pháp**: import
    `jackson-bom` phiên bản 2.13.5 vào `dependencyManagement` của `api/pom.xml` để ghim version
    thống nhất.
+9. **Thay đổi `maven.compiler.source/target` không tự trigger recompile**: sau khi đổi
+   `training/pom.xml` sang Java 11, `mvn install` thường vẫn tái sử dụng class đã compile
+   sẵn ở target Java 17 (Maven chỉ so sánh timestamp `.java` vs `.class`, không biết config
+   compiler đã đổi). **Giải pháp**: `mvn -pl training clean install` (bắt buộc `clean`) sau
+   bất kỳ thay đổi compiler-level nào.
+10. **Độ lệch chuẩn cao khi có tiến trình Java khác chạy song song**: đo kịch bản 1 khi web
+    demo API đang chạy nền cho kết quả nhiễu tới mức đảo ngược kết luận (ENABLED không còn
+    nhanh hơn NONE). **Giải pháp**: luôn dừng mọi tiến trình `java.exe` khác trước khi chạy
+    benchmark chính thức — kiểm tra bằng `Get-NetTCPConnection -LocalPort 8080` (tìm PID API)
+    hoặc `tasklist /FI "IMAGENAME eq java.exe"`.
 
 ## Cấu trúc thư mục
 
@@ -242,6 +331,26 @@ api/src/main/java/vn/huit/dl4j/api/
 └── dto/...
 
 api/src/main/resources/static/  # Web demo (HTML/CSS/JS thuần + Chart.js qua CDN)
-scripts/                        # Script PowerShell cho từng bước
-results/                        # Output benchmark + summary.md
+
+scripts/
+├── setup-env.ps1                       # JAVA_HOME/MAVEN_HOME/HADOOP_HOME/MAVEN_OPTS/thread-lock
+├── run-training.ps1
+├── run-api.ps1                         # Package fat-jar + java -jar (KHÔNG dùng spring-boot:run, xem sự cố #6)
+├── run-benchmark-1-workspace.ps1       # Kịch bản 1, 1 lần chạy
+├── run-benchmark-1-repeated.ps1        # Kịch bản 1, lặp N lần + sampling Working Set theo epoch
+├── aggregate-workspace-runs.ps1        # Gộp N lần chạy kịch bản 1 -> mean ± std
+├── run-benchmark-2-spark-scaling.ps1   # Kịch bản 2 (đã lặp 3 lần x local[1,2,4,8] sẵn trong Java)
+├── run-benchmark-3-latency.ps1         # Kịch bản 3a + 3b
+├── summarize-results.ps1               # Gộp tất cả CSV -> results/summary.md
+├── plot_workspace_results.py           # Vẽ PNG (matplotlib) cho kịch bản 1
+└── run-all.ps1                         # Tự động hoá build+train+kịch bản 1+2+tổng hợp
+
+results/
+├── *.csv, *.json                # Kết quả từng kịch bản
+├── *_report_table.md            # Bảng mean ± std đã format sẵn (kịch bản 1, 2)
+├── workspace_runs/               # Dữ liệu thô từng lần chạy lặp (epoch_detail_run*.csv, os_samples_run*.csv)
+├── charts/                       # Biểu đồ PNG xuất bởi plot_workspace_results.py
+└── summary.md                    # Tổng hợp toàn bộ, copy vào slide
+
+logs/                            # Log console đầy đủ của mỗi lần chạy (timestamped)
 ```

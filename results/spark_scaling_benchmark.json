@@ -1,7 +1,6 @@
 [
-  {"throughputRecPerSec": 1391.6323102763781, "batchSize": 64, "elapsedMs": 163725, "threads": 1},
-  {"throughputRecPerSec": 2272.858767432117, "batchSize": 64, "elapsedMs": 100246, "threads": 2},
-  {"throughputRecPerSec": 2840.889254632054, "batchSize": 64, "elapsedMs": 80202, "threads": 4},
-  {"throughputRecPerSec": 3067.049860004308, "batchSize": 64, "elapsedMs": 74288, "threads": 6},
-  {"throughputRecPerSec": 3183.7490393348703, "batchSize": 64, "elapsedMs": 71565, "threads": 8}
+  {"threads": 1, "timeMeanMs": 378615.0, "timeStdMs": 15830.98, "throughputMean": 602.47, "throughputStd": 24.73, "speedup": 1.0, "efficiencyPct": 100.0, "peakMemMeanMB": 4088.65, "peakMemStdMB": 129.09},
+  {"threads": 2, "timeMeanMs": 201578.33, "timeStdMs": 18738.36, "throughputMean": 1136.8, "throughputStd": 104.96, "speedup": 1.88, "efficiencyPct": 93.91, "peakMemMeanMB": 4494.76, "peakMemStdMB": 148.63},
+  {"threads": 4, "timeMeanMs": 137368.0, "timeStdMs": 18968.78, "throughputMean": 1679.9, "throughputStd": 231.65, "speedup": 2.76, "efficiencyPct": 68.91, "peakMemMeanMB": 4273.8, "peakMemStdMB": 360.13},
+  {"threads": 8, "timeMeanMs": 123666.0, "timeStdMs": 38950.57, "throughputMean": 1958.1, "throughputStd": 556.24, "speedup": 3.06, "efficiencyPct": 38.27, "peakMemMeanMB": 4692.91, "peakMemStdMB": 13.81}
 ]

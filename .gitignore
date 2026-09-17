@@ -10,6 +10,7 @@ data/*.csv
 
 # Ket qua benchmark sinh ra tu dong (giu lai neu muon dinh kem vao bao cao/slide)
 # results/
+results/workspace_pid.txt
 
 # IDE
 .idea/
