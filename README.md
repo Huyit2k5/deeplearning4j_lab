@@ -251,11 +251,66 @@ Hai cách để xem biểu đồ thời gian/bộ nhớ theo từng epoch (kịc
 
    ![Thời gian train mỗi epoch - NONE vs ENABLED](results/charts/workspace_time_per_epoch.png)
 
+   **Nhận xét:** `ENABLED` (cam) hầu như luôn nằm dưới `NONE` (xanh) và dao động ít hơn.
+   Chênh lệch rõ nhất ở các epoch 6, 11, 12 — nơi `NONE` có những đợt tăng đột biến lên tới
+   17.000–22.500ms (dải mờ rất rộng, thể hiện độ lệch chuẩn lớn giữa các lần chạy), trong khi
+   `ENABLED` giữ được biên độ hẹp hơn quanh 7.500–10.500ms. Điều này cho thấy `WorkspaceMode.
+   ENABLED` không chỉ nhanh hơn trung bình mà còn **ổn định hơn qua các lần chạy**, do tái sử
+   dụng buffer bộ nhớ thay vì cấp phát/giải phóng lặp lại (nguồn gây ra các đợt trễ đột biến
+   ở `NONE`).
+
    ![VmRSS mỗi epoch - NONE vs ENABLED](results/charts/workspace_vmrss_per_epoch.png)
+
+   **Nhận xét:** cả 2 mode đều tăng bộ nhớ nhanh trong ~5 epoch đầu (JVM/GC còn "khởi động",
+   heap chưa ổn định), sau đó chững lại quanh epoch 7–9. Từ đó trở đi, `NONE` (xanh) tiếp tục
+   nhích cao hơn và dao động nhiều hơn (thấy rõ đợt tụt xuống ~4.880MB rồi tăng lại ở epoch
+   11–14), trong khi `ENABLED` (cam) đi ngang ổn định quanh 4.800–4.900MB với dải mờ hẹp hơn
+   hẳn. Đây là bằng chứng trực quan cho việc `WorkspaceMode.ENABLED` giữ bộ nhớ **ổn định và
+   có thể dự đoán được** theo thời gian, thay vì tăng giảm thất thường như `NONE`.
 
 2. **Trang tương tác (HTML)** — có hover xem giá trị chính xác từng epoch + bảng dữ liệu,
    dựng từ `results/workspace_chart_data.json` (sinh bởi cùng logic khớp timestamp, có thể
    tái tạo bằng một script Python nhỏ nếu cần dựng lại trang).
+
+### Kịch bản 2 — Spark Local Scaling
+
+```powershell
+python scripts\plot_spark_scaling_results.py
+```
+
+Đọc trực tiếp từ `results/spark_scaling_benchmark.csv` (bảng mean ± std đã tổng hợp), xuất
+4 biểu đồ vào `results/charts/`:
+
+![Thời gian thực thi theo cấu hình Worker](results/charts/spark_time_by_config.png)
+
+**Nhận xét:** thời gian giảm mạnh nhất khi đi từ `local[1]` sang `local[2]` (378,6s → 201,6s,
+giảm ~47%), sau đó mức giảm chậm dần rõ rệt — từ `local[4]` sang `local[8]` chỉ giảm thêm
+~10% (137,4s → 123,7s) dù số luồng tăng gấp đôi. Thanh sai số (std) cũng phình to dần theo
+số luồng, đặc biệt ở `local[8]` (±38,9s) — dấu hiệu tranh chấp tài nguyên CPU vật lý khi số
+luồng logic vượt quá số core thực của máy.
+
+![Tốc độ gia tăng so với lý tưởng](results/charts/spark_speedup_vs_ideal.png)
+
+**Nhận xét:** đường tốc độ gia tăng thực đo (nét liền) tách xa dần khỏi đường tốc độ gia
+tăng lý tưởng (nét đứt, speedup = số luồng) ngay từ `local[2]` — thực tế chỉ đạt 1,88× thay
+vì 2×, và khoảng cách nới rộng thêm ở `local[8]` (3,06× so với lý tưởng 8×). Đây là hình ảnh
+kinh điển của định luật Amdahl: phần tuần tự không song song hoá được (I/O đọc CSV, tổng hợp
+kết quả giữa các worker...) áp trần lên tốc độ gia tăng tối đa có thể đạt được.
+
+![Hiệu suất co giãn theo cấu hình Worker](results/charts/spark_efficiency.png)
+
+**Nhận xét:** hiệu suất co giãn giảm gần như tuyến tính theo số luồng (100% → 93,9% → 68,9%
+→ 38,3%), rớt mạnh nhất ở đoạn `local[4]` → `local[8]` (giảm 30,6 điểm %). Đây là tín hiệu rõ
+ràng cho thấy 8 luồng đã vượt qua điểm hiệu quả kinh tế trên cấu hình máy hiện tại — nếu ưu
+tiên hiệu suất/tài nguyên hơn là tốc độ tuyệt đối, `local[4]` là điểm cân bằng hợp lý hơn.
+
+![Đỉnh bộ nhớ VmHWM theo cấu hình Worker](results/charts/spark_peak_memory.png)
+
+**Nhận xét:** đỉnh bộ nhớ không tăng tuyến tính theo số luồng như thời gian/tốc độ — dao động
+trong khoảng 4,1–4,7GB ở cả 4 cấu hình, với `local[8]` cao nhất (4.692,9MB) nhưng độ lệch
+chuẩn lại thấp nhất (±13,8MB, rất ổn định giữa 3 lần chạy), trong khi `local[4]` có độ lệch
+chuẩn cao nhất (±360,1MB) — cho thấy ở mức 4 luồng, hành vi cấp phát bộ nhớ giữa các lần chạy
+kém ổn định hơn so với 1, 2 hay 8 luồng.
 
 ## Sự cố đã gặp & cách khắc phục (Windows)
 
