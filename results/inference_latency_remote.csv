@@ -1,0 +1,3 @@
+mode,batchSize,meanMs,p50Ms,p99Ms,minMs,maxMs,sampleCount
+remote,1,7.644,6.827,18.317,2.774,20.649,200
+remote,8,5.874,4.669,16.834,3.02,21.651,200

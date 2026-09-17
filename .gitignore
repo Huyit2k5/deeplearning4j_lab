@@ -1,0 +1,32 @@
+# Maven build output
+target/
+*.class
+
+# Trained models (binary, regenerate via scripts/run-training.ps1)
+training/models/
+
+# Dataset (150MB, vuot gioi han 100MB cua GitHub - can Git LFS neu muon commit)
+data/*.csv
+
+# Ket qua benchmark sinh ra tu dong (giu lai neu muon dinh kem vao bao cao/slide)
+# results/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.classpath
+.project
+.settings/
+.factorypath
+
+# Logs
+*.log
+
+# OS
+Thumbs.db
+Desktop.ini
+
+# Local tooling khong thuoc repo (Maven/JDK tai thu cong ngoai scope project)
+/devtools/
+/hadoop/

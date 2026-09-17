@@ -1,0 +1,4 @@
+[
+  {"mode": "remote", "sampleCount": 200, "p99Ms": 18.317, "minMs": 2.774, "maxMs": 20.649, "batchSize": 1, "meanMs": 7.644, "p50Ms": 6.827},
+  {"mode": "remote", "sampleCount": 200, "p99Ms": 16.834, "minMs": 3.02, "maxMs": 21.651, "batchSize": 8, "meanMs": 5.874, "p50Ms": 4.669}
+]

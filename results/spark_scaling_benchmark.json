@@ -1,0 +1,7 @@
+[
+  {"throughputRecPerSec": 1391.6323102763781, "batchSize": 64, "elapsedMs": 163725, "threads": 1},
+  {"throughputRecPerSec": 2272.858767432117, "batchSize": 64, "elapsedMs": 100246, "threads": 2},
+  {"throughputRecPerSec": 2840.889254632054, "batchSize": 64, "elapsedMs": 80202, "threads": 4},
+  {"throughputRecPerSec": 3067.049860004308, "batchSize": 64, "elapsedMs": 74288, "threads": 6},
+  {"throughputRecPerSec": 3183.7490393348703, "batchSize": 64, "elapsedMs": 71565, "threads": 8}
+]

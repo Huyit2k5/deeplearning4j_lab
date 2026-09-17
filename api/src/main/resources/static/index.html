@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>DL4J Fraud Detection Demo</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+</head>
+<body>
+<header>
+    <h1>Deeplearning4j — Fraud Detection Demo &amp; Benchmark</h1>
+    <nav>
+        <button class="tab-btn active" data-tab="demo">Demo dự đoán</button>
+        <button class="tab-btn" data-tab="benchmark">Kết quả Benchmark</button>
+    </nav>
+</header>
+
+<main>
+    <section id="demo" class="tab-panel active">
+        <div class="panel">
+            <h2>Dự đoán giao dịch</h2>
+            <p>Lấy một giao dịch mẫu từ dataset (Normal hoặc Fraud thật) rồi gửi đến model để dự đoán.</p>
+            <div class="controls">
+                <button id="btnSampleNormal">Lấy ví dụ Normal</button>
+                <button id="btnSampleFraud">Lấy ví dụ Fraud</button>
+                <button id="btnPredict" class="primary">Dự đoán</button>
+            </div>
+            <textarea id="featuresBox" rows="4" placeholder="30 feature, cách nhau bởi dấu phẩy (Time, V1..V28, Amount)"></textarea>
+            <div id="result" class="result"></div>
+        </div>
+    </section>
+
+    <section id="benchmark" class="tab-panel">
+        <div class="panel">
+            <h2>Kịch bản 1 — WorkspaceMode NONE vs ENABLED</h2>
+            <canvas id="chartWorkspace"></canvas>
+        </div>
+        <div class="panel">
+            <h2>Kịch bản 2 — Spark Local Scaling</h2>
+            <canvas id="chartSpark"></canvas>
+        </div>
+        <div class="panel">
+            <h2>Kịch bản 3 — In-process vs Remote Latency</h2>
+            <canvas id="chartLatency"></canvas>
+        </div>
+        <button id="btnRefreshCharts">Tải lại kết quả</button>
+    </section>
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>

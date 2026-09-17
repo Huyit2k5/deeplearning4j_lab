@@ -1,0 +1,3 @@
+mode,epochs,batchSize,elapsedMs,heapUsedBytes,nonHeapUsedBytes,nativeUsedBytes
+NONE,2,64,33627,1481433600,62502336,30508704
+ENABLED,2,64,32870,1049328000,61234136,9803964

@@ -1,0 +1,4 @@
+[
+  {"nativeUsedBytes": 30508704, "epochs": 2, "heapUsedBytes": 1481433600, "elapsedMs": 33627, "mode": "NONE", "batchSize": 64, "nonHeapUsedBytes": 62502336},
+  {"nativeUsedBytes": 9803964, "epochs": 2, "heapUsedBytes": 1049328000, "elapsedMs": 32870, "mode": "ENABLED", "batchSize": 64, "nonHeapUsedBytes": 61234136}
+]
