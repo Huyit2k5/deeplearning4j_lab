@@ -27,6 +27,10 @@ data/*.csv
 Thumbs.db
 Desktop.ini
 
+# Claude Code / Kilo tool state (khong thuoc noi dung du an)
+.claude/
+.kilo/
+
 # Local tooling khong thuoc repo (Maven/JDK tai thu cong ngoai scope project)
 /devtools/
 /hadoop/
