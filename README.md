@@ -204,6 +204,13 @@ Một service Python độc lập (`pyapi/`), dùng **chỉ để đối chứng
 với Spring Boot trong kịch bản 3 — cùng kiến trúc MLP (30→32→16→2), trọng số khởi tạo random
 (không train), vì mục tiêu là đo độ trễ tầng serving chứ không phải độ chính xác dự đoán.
 
+**Vì sao giữ cả 2 (không thay Spring Boot bằng FastAPI)**: đây là 2 vai trò khác nhau, không
+thừa. **Spring Boot** là server thật đang phục vụ web demo của project — số liệu remote của nó
+phản ánh đúng hiệu năng hệ thống đang trình bày. **FastAPI** chỉ là điểm đối chứng bên ngoài,
+giúp trả lời "độ chậm đó là do Java/Spring Boot cụ thể, hay là chi phí không tránh được của bất
+kỳ remote serving nào (network + serialize)?" — nếu bỏ Spring Boot thì mất khả năng đánh giá
+đúng hệ thống thật; nếu bỏ FastAPI thì mất điểm tham chiếu để tách bạch 2 loại chi phí đó.
+
 ```powershell
 cd pyapi
 pip install -r requirements.txt
