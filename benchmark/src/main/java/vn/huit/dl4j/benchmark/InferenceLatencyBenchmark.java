@@ -14,12 +14,14 @@ import java.util.Map;
 
 /**
  * Kich ban 3 (phan in-process): do do tre suy luan khi goi model.output(...)
- * truc tiep trong cung tien trinh JVM, o batch size B=1 va B=8.
+ * truc tiep trong cung tien trinh JVM, quet qua nhieu batch size B.
  *
  * Usage: mvn -pl benchmark exec:java -Dexec.mainClass=vn.huit.dl4j.benchmark.InferenceLatencyBenchmark
  *        -Dexec.args="<modelPath> <warmupIters> <measureIters>"
  */
 public final class InferenceLatencyBenchmark {
+
+    private static final int[] BATCH_SIZES = {1, 8, 16, 32, 64};
 
     public static void main(String[] args) throws Exception {
         File modelFile = args.length > 0 ? new File(args[0]) : new File("training/models/fraud_mlp.zip");
@@ -29,15 +31,17 @@ public final class InferenceLatencyBenchmark {
         MultiLayerNetwork model = ModelSerializer.restoreMultiLayerNetwork(modelFile);
 
         List<Map<String, Object>> results = new ArrayList<>();
-        results.add(runBatch(model, 1, warmup, measure));
-        results.add(runBatch(model, 8, warmup, measure));
+        for (int batchSize : BATCH_SIZES) {
+            results.add(runBatch(model, batchSize, warmup, measure));
+        }
 
         File outDir = new File("results");
-        List<String> header = List.of("mode", "batchSize", "meanMs", "p50Ms", "p99Ms", "minMs", "maxMs", "sampleCount");
+        List<String> header = List.of("mode", "batchSize", "meanMs", "p50Ms", "p99Ms", "minMs", "maxMs",
+                "throughputPerSec", "sampleCount");
         List<List<Object>> rows = new ArrayList<>();
         for (Map<String, Object> r : results) {
             rows.add(List.of(r.get("mode"), r.get("batchSize"), r.get("meanMs"), r.get("p50Ms"),
-                    r.get("p99Ms"), r.get("minMs"), r.get("maxMs"), r.get("sampleCount")));
+                    r.get("p99Ms"), r.get("minMs"), r.get("maxMs"), r.get("throughputPerSec"), r.get("sampleCount")));
         }
         ResultWriter.writeCsv(new File(outDir, "inference_latency_inprocess.csv"), header, rows);
         ResultWriter.writeJson(new File(outDir, "inference_latency_inprocess.json"), results);
@@ -61,6 +65,7 @@ public final class InferenceLatencyBenchmark {
         }
 
         LatencyStats.Result stats = LatencyStats.compute(samples);
+        double throughputPerSec = batchSize / (stats.meanMs() / 1000.0);
 
         return Map.of(
                 "mode", "in-process",
@@ -70,6 +75,7 @@ public final class InferenceLatencyBenchmark {
                 "p99Ms", round(stats.p99Ms()),
                 "minMs", round(stats.minMs()),
                 "maxMs", round(stats.maxMs()),
+                "throughputPerSec", round(throughputPerSec),
                 "sampleCount", stats.sampleCount()
         );
     }

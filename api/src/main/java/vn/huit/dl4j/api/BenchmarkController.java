@@ -21,7 +21,8 @@ public class BenchmarkController {
 
     private static final String[] KNOWN_FILES = {
             "workspace_benchmark", "spark_scaling_benchmark",
-            "inference_latency_inprocess", "inference_latency_remote"
+            "inference_latency_inprocess", "inference_latency_remote_springboot",
+            "inference_latency_remote_fastapi"
     };
 
     @GetMapping(value = "/results/{name}", produces = MediaType.APPLICATION_JSON_VALUE)

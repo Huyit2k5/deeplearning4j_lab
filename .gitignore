@@ -24,6 +24,10 @@ results/workspace_pid.txt
 # Logs
 *.log
 
+# Python bytecode cache (pyapi/)
+__pycache__/
+*.pyc
+
 # OS
 Thumbs.db
 Desktop.ini

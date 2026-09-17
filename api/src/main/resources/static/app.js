@@ -63,7 +63,8 @@ async function loadCharts() {
     renderSparkChart(data.spark_scaling_benchmark || []);
     renderLatencyChart(
         (data.inference_latency_inprocess || []),
-        (data.inference_latency_remote || [])
+        (data.inference_latency_remote_springboot || []),
+        (data.inference_latency_remote_fastapi || [])
     );
 }
 
@@ -117,10 +118,11 @@ function renderSparkChart(rows) {
     });
 }
 
-function renderLatencyChart(inProcessRows, remoteRows) {
+function renderLatencyChart(inProcessRows, springbootRows, fastapiRows) {
     const ctx = document.getElementById("chartLatency");
-    const all = [...inProcessRows, ...remoteRows];
-    const labels = [...new Set(all.map(r => "B=" + r.batchSize))];
+    const all = [...inProcessRows, ...springbootRows, ...fastapiRows];
+    const labels = [...new Set(all.map(r => "B=" + r.batchSize))]
+        .sort((a, b) => parseInt(a.replace("B=", "")) - parseInt(b.replace("B=", "")));
 
     function seriesFor(rows, metric) {
         return labels.map(label => {
@@ -136,11 +138,10 @@ function renderLatencyChart(inProcessRows, remoteRows) {
             labels,
             datasets: [
                 {label: "In-process p50 (ms)", data: seriesFor(inProcessRows, "p50Ms"), backgroundColor: "#5b8cff"},
-                {label: "In-process p99 (ms)", data: seriesFor(inProcessRows, "p99Ms"), backgroundColor: "#3a5fc4"},
-                {label: "Remote p50 (ms)", data: seriesFor(remoteRows, "p50Ms"), backgroundColor: "#ff6b6b"},
-                {label: "Remote p99 (ms)", data: seriesFor(remoteRows, "p99Ms"), backgroundColor: "#c44a4a"}
+                {label: "Spring Boot p50 (ms)", data: seriesFor(springbootRows, "p50Ms"), backgroundColor: "#ff6b6b"},
+                {label: "FastAPI p50 (ms)", data: seriesFor(fastapiRows, "p50Ms"), backgroundColor: "#4cd97b"}
             ]
         },
-        options: {responsive: true}
+        options: {responsive: true, scales: {y: {type: "logarithmic"}}}
     });
 }

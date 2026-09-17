@@ -1,4 +1,7 @@
 [
-  {"meanMs": 1.574, "p50Ms": 1.441, "mode": "in-process", "sampleCount": 200, "p99Ms": 4.208, "minMs": 0.355, "maxMs": 5.356, "batchSize": 1},
-  {"meanMs": 1.971, "p50Ms": 1.782, "mode": "in-process", "sampleCount": 200, "p99Ms": 7.019, "minMs": 1.121, "maxMs": 11.533, "batchSize": 8}
+  {"p50Ms": 0.172, "sampleCount": 500, "throughputPerSec": 3633.967, "maxMs": 1.627, "mode": "in-process", "batchSize": 1, "p99Ms": 1.174, "meanMs": 0.275, "minMs": 0.092},
+  {"p50Ms": 0.738, "sampleCount": 500, "throughputPerSec": 9791.867, "maxMs": 15.327, "mode": "in-process", "batchSize": 8, "p99Ms": 2.595, "meanMs": 0.817, "minMs": 0.301},
+  {"p50Ms": 0.381, "sampleCount": 500, "throughputPerSec": 36471.908, "maxMs": 1.243, "mode": "in-process", "batchSize": 16, "p99Ms": 0.938, "meanMs": 0.439, "minMs": 0.276},
+  {"p50Ms": 0.322, "sampleCount": 500, "throughputPerSec": 82332.691, "maxMs": 4.804, "mode": "in-process", "batchSize": 32, "p99Ms": 0.92, "meanMs": 0.389, "minMs": 0.275},
+  {"p50Ms": 0.626, "sampleCount": 500, "throughputPerSec": 81732.838, "maxMs": 26.528, "mode": "in-process", "batchSize": 64, "p99Ms": 1.992, "meanMs": 0.783, "minMs": 0.377}
 ]

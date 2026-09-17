@@ -1,3 +1,6 @@
-mode,batchSize,meanMs,p50Ms,p99Ms,minMs,maxMs,sampleCount
-in-process,1,1.574,1.441,4.208,0.355,5.356,200
-in-process,8,1.971,1.782,7.019,1.121,11.533,200
+mode,batchSize,meanMs,p50Ms,p99Ms,minMs,maxMs,throughputPerSec,sampleCount
+in-process,1,0.275,0.172,1.174,0.092,1.627,3633.967,500
+in-process,8,0.817,0.738,2.595,0.301,15.327,9791.867,500
+in-process,16,0.439,0.381,0.938,0.276,1.243,36471.908,500
+in-process,32,0.389,0.322,0.92,0.275,4.804,82332.691,500
+in-process,64,0.783,0.626,1.992,0.377,26.528,81732.838,500

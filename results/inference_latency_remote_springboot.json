@@ -1,0 +1,7 @@
+[
+  {"maxMs": 27.48, "throughputPerSec": 158.612, "sampleCount": 200, "p50Ms": 5.485, "minMs": 2.922, "meanMs": 6.305, "p99Ms": 20.534, "batchSize": 1, "mode": "remote-springboot"},
+  {"maxMs": 27.422, "throughputPerSec": 1385.668, "sampleCount": 200, "p50Ms": 5.56, "minMs": 2.848, "meanMs": 5.773, "p99Ms": 11.097, "batchSize": 8, "mode": "remote-springboot"},
+  {"maxMs": 20.825, "throughputPerSec": 2849.693, "sampleCount": 200, "p50Ms": 5.447, "minMs": 3.017, "meanMs": 5.615, "p99Ms": 10.565, "batchSize": 16, "mode": "remote-springboot"},
+  {"maxMs": 23.347, "throughputPerSec": 5586.502, "sampleCount": 200, "p50Ms": 5.37, "minMs": 3.394, "meanMs": 5.728, "p99Ms": 15.034, "batchSize": 32, "mode": "remote-springboot"},
+  {"maxMs": 26.251, "throughputPerSec": 9813.853, "sampleCount": 200, "p50Ms": 6.028, "minMs": 4.035, "meanMs": 6.521, "p99Ms": 15.891, "batchSize": 64, "mode": "remote-springboot"}
+]

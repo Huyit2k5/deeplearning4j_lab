@@ -1,0 +1,6 @@
+mode,batchSize,meanMs,p50Ms,p99Ms,minMs,maxMs,throughputPerSec,sampleCount
+remote-springboot,1,6.305,5.485,20.534,2.922,27.48,158.612,200
+remote-springboot,8,5.773,5.56,11.097,2.848,27.422,1385.668,200
+remote-springboot,16,5.615,5.447,10.565,3.017,20.825,2849.693,200
+remote-springboot,32,5.728,5.37,15.034,3.394,23.347,5586.502,200
+remote-springboot,64,6.521,6.028,15.891,4.035,26.251,9813.853,200

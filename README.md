@@ -16,6 +16,7 @@ chạy hoàn toàn trên **Windows** (không cần WSL2/Linux).
 - [Chạy từng phần](#chạy-từng-phần)
 - [3 kịch bản thực nghiệm](#3-kịch-bản-thực-nghiệm)
 - [Web demo](#web-demo)
+- [FastAPI comparison service (Python)](#fastapi-comparison-service-python)
 - [Kết quả đã đo](#kết-quả-đã-đo)
 - [Sự cố đã gặp & cách khắc phục (Windows)](#sự-cố-đã-gặp--cách-khắc-phục-windows)
 - [Cấu trúc thư mục](#cấu-trúc-thư-mục)
@@ -52,6 +53,7 @@ D:\deeplearning4j\
 ├── training\                 # data pipeline + training (Java 11 bytecode)
 ├── benchmark\                 # 3 kịch bản benchmark
 ├── api\                       # Spring Boot: REST API + web demo tĩnh
+├── pyapi\                     # FastAPI (Python): service đối chứng cho kịch bản 3
 ├── results\                   # output benchmark (CSV + JSON + report table + charts)
 ├── logs\                      # log console đầy đủ của từng lần chạy
 └── scripts\                   # PowerShell + Python tiện ích
@@ -73,10 +75,12 @@ số (`Time`, `V1`..`V28` đã PCA-transform, `Amount`), nhãn `Class` (0 = bìn
 | JDK 11 | Temurin 11.0.32 | **Chỉ dùng để chạy `SparkTrainingRunner`** (xem phần sự cố) |
 | Apache Maven | 3.9.16 | Cài thủ công tại `C:\devtools\apache-maven-3.9.16` (không có trên winget) |
 | Hadoop winutils | 3.3.6 | Tại `C:\hadoop\bin` — bắt buộc để Spark chạy trên Windows |
+| Python 3 | 3.14 | Cho `pyapi/` (FastAPI, kịch bản 3) và các script vẽ biểu đồ |
 
-Không cần cài Python/PyTorch để train/benchmark (đặc tả gốc có nhắc tới để đối chứng nhưng
-nằm ngoài phạm vi các script đã dựng). Chỉ cần **Python 3 + matplotlib** nếu muốn chạy
-`scripts/plot_workspace_results.py` để xuất biểu đồ PNG (`pip install matplotlib`).
+Không cần Python để train/benchmark phần DL4J. Cần Python cho 2 việc:
+- **`pip install matplotlib`** — chạy các script `scripts/plot_*.py` để xuất biểu đồ PNG.
+- **`pip install -r pyapi/requirements.txt`** (fastapi, uvicorn, torch, pydantic) — chạy
+  service FastAPI đối chứng trong kịch bản 3 (xem [FastAPI comparison service](#fastapi-comparison-service-python)).
 
 ## Cài đặt lần đầu
 
@@ -158,8 +162,8 @@ lần đo sạch cho ENABLED nhanh hơn ~21%).
 | --- | --- | --- | --- |
 | 1 | `WorkspaceBenchmark` | Thời gian + bộ nhớ (heap/non-heap/native, và Working Set theo từng epoch) giữa `WorkspaceMode.NONE` và `ENABLED` | `results/workspace_benchmark.{csv,json}`, `results/workspace_report_table.md` (mean ± std qua nhiều lần chạy) |
 | 2 | `SparkScalingBenchmark` | Thời gian, throughput, tốc độ gia tăng (speedup), hiệu suất co giãn và đỉnh bộ nhớ (VmHWM) khi tăng số Spark executor thread (`local[1,2,4,8]`) | `results/spark_scaling_benchmark.{csv,json}`, `results/spark_scaling_report_table.md`, `results/spark_scaling_raw.csv` (số liệu thô từng lần) |
-| 3a | `InferenceLatencyBenchmark` | Độ trễ p50/p99 khi gọi `model.output()` trực tiếp trong JVM (in-process), batch B=1 và B=8 | `results/inference_latency_inprocess.{csv,json}` |
-| 3b | `RemoteLatencyClient` | Độ trễ p50/p99 khi gọi qua REST API (`/api/predict`, `/api/predict/batch`) | `results/inference_latency_remote.{csv,json}` |
+| 3a | `InferenceLatencyBenchmark` | Độ trễ p50/p99 + throughput khi gọi `model.output()` trực tiếp trong JVM (in-process), quét batch B ∈ {1,8,16,32,64} | `results/inference_latency_inprocess.{csv,json}` |
+| 3b | `RemoteLatencyClient` | Độ trễ p50/p99 + throughput khi gọi qua REST API, chạy 2 lần (Spring Boot :8080, FastAPI :8000) cùng batch B ∈ {1,8,16,32,64} | `results/inference_latency_remote_{springboot,fastapi}.{csv,json}`, `results/latency_comparison.csv` + `results/latency_comparison_table.md` (đã ghép 3 tầng + tính tỷ số) |
 
 **Windows không có `VmRSS`** (chỉ số bộ nhớ chuẩn của Linux) — cả 2 kịch bản đầu dùng
 **Working Set** (`Get-Process.WorkingSet64` / `PeakWorkingSet64`) làm chỉ số tương đương:
@@ -194,6 +198,22 @@ Các endpoint chính:
 | GET | `/api/sample?classLabel=0\|1` | Lấy 1 ví dụ ngẫu nhiên (Normal hoặc Fraud thật) từ dataset |
 | GET | `/api/benchmark/results` | Toàn bộ kết quả benchmark dạng JSON |
 
+## FastAPI comparison service (Python)
+
+Một service Python độc lập (`pyapi/`), dùng **chỉ để đối chứng chi phí framework/serving**
+với Spring Boot trong kịch bản 3 — cùng kiến trúc MLP (30→32→16→2), trọng số khởi tạo random
+(không train), vì mục tiêu là đo độ trễ tầng serving chứ không phải độ chính xác dự đoán.
+
+```powershell
+cd pyapi
+pip install -r requirements.txt
+python -m uvicorn app:app --host 0.0.0.0 --port 8000
+```
+
+Cùng 2 endpoint như Spring Boot (`POST /api/predict`, `POST /api/predict/batch`) để
+`RemoteLatencyClient` có thể tái sử dụng nguyên logic gọi HTTP cho cả 2 server, chỉ khác
+`baseUrl` + tham số `label` (`springboot` hoặc `fastapi`).
+
 ## Kết quả đã đo
 
 Model (`training/models/fraud_mlp.zip`): **Accuracy 99.95%**, **F1 84.57%** (lớp fraud).
@@ -222,17 +242,24 @@ số liệu chính thức.)*
 Hiệu suất co giãn giảm dần rõ rệt theo N (100% → 38,3%) — đúng quy luật hiệu suất giảm dần
 (diminishing returns / Amdahl's Law) khi tăng song song hóa trên cùng một máy.
 
-### Kịch bản 3 — In-process vs Remote
+### Kịch bản 3 — In-process vs Remote (Spring Boot & FastAPI), batch B = {1, 8, 16, 32, 64}
 
-| Batch | In-process p50 | Remote (HTTP) p50 |
-| --- | --- | --- |
-| B=1 | ≈1,4 ms | ≈5–7 ms |
-| B=8 | ≈1,8 ms | ≈5–7 ms |
+Mở rộng thêm tầng **FastAPI (Python + PyTorch)** để so sánh 3 tầng kiến trúc, đối chiếu với
+**Spring Boot (Java)** đã có sẵn — dùng chung 1 MLP cùng kiến trúc (30→32→16→2) ở cả 2 remote
+server để chi phí forward-pass tương đương nhau, chỉ khác chi phí framework/serving:
 
-Chênh lệch phản ánh chi phí serialize JSON + network round-trip khi gọi qua REST API so với
-gọi hàm trực tiếp trong cùng JVM.
+| Batch (B) | In-Process (ms) | Spring Boot (ms) | FastAPI (ms) |
+| --- | --- | --- | --- |
+| 1 | 0,172 | 5,485 | 3,239 |
+| 8 | 0,738 | 5,560 | 3,036 |
+| 16 | 0,381 | 5,447 | 2,967 |
+| 32 | 0,322 | 5,370 | 3,596 |
+| 64 | 0,626 | 6,028 | 4,104 |
 
-Xem `results/summary.md` để có bảng đầy đủ (copy trực tiếp vào slide).
+*(cột giá trị là p50, ms; xem `results/latency_comparison_table.md` để có đủ throughput +
+tỷ số chênh lệch cho từng cặp, và mục "Trực quan hoá" bên dưới để xem biểu đồ + nhận xét)*
+
+Xem `results/summary.md` để có bảng tổng hợp mọi kịch bản (copy trực tiếp vào slide).
 
 ## Trực quan hoá
 
@@ -312,6 +339,29 @@ chuẩn lại thấp nhất (±13,8MB, rất ổn định giữa 3 lần chạy)
 chuẩn cao nhất (±360,1MB) — cho thấy ở mức 4 luồng, hành vi cấp phát bộ nhớ giữa các lần chạy
 kém ổn định hơn so với 1, 2 hay 8 luồng.
 
+### Kịch bản 3 — In-process vs Remote (Spring Boot & FastAPI)
+
+```powershell
+python scripts\build_latency_comparison.py   # gộp 3 tầng -> results\latency_comparison.csv + .md
+python scripts\plot_latency_comparison.py    # vẽ 2 biểu đồ PNG
+```
+
+![So sánh p50 3 tầng theo batch size](results/charts/latency_p50_by_batch.png)
+
+**Nhận xét:** cả 2 tầng remote đều cách biệt hoàn toàn với in-process (chênh lệch 5–30 lần
+tùy batch size) — network + serialize/deserialize JSON luôn là chi phí áp đảo so với bản thân
+forward-pass của model. Giữa 2 framework remote, **FastAPI nhất quán nhanh hơn Spring Boot**
+(~35–45%) ở mọi batch size — phản ánh overhead thấp hơn của stack Python/uvicorn (ASGI, không
+qua Servlet/Tomcat) so với Spring MVC. Đường in-process (xanh) dao động nhiều nhất vì độ trễ
+tuyệt đối quá nhỏ (dưới 1ms) nên nhiễu đo lường (JIT, GC) chiếm tỷ trọng lớn hơn trong % sai số.
+
+![So sánh thông lượng 3 tầng theo batch size](results/charts/latency_throughput_by_batch.png)
+
+**Nhận xét:** thông lượng in-process tăng gần tuyến tính rồi bão hòa quanh batch=32 (~82.000
+mẫu/s), trong khi cả 2 remote server vẫn tăng đều tới batch=64 mà chưa thấy dấu hiệu bão hòa
+— cho thấy ở các batch size đã thử, chi phí network/serialize vẫn là nút thắt cổ chai chính,
+CPU của model chưa phải giới hạn với 2 server remote.
+
 ## Sự cố đã gặp & cách khắc phục (Windows)
 
 Ghi lại để tránh lặp lại khi setup trên máy khác, hoặc để giải thích trong phần "khó
@@ -374,8 +424,8 @@ training/src/main/java/vn/huit/dl4j/training/
 benchmark/src/main/java/vn/huit/dl4j/benchmark/
 ├── WorkspaceBenchmark.java        # Kịch bản 1
 ├── SparkScalingBenchmark.java     # Kịch bản 2 (điều phối, spawn JDK11 subprocess)
-├── InferenceLatencyBenchmark.java # Kịch bản 3a (in-process)
-├── RemoteLatencyClient.java       # Kịch bản 3b (remote, gọi API)
+├── InferenceLatencyBenchmark.java # Kịch bản 3a (in-process, quét batch 1-64)
+├── RemoteLatencyClient.java       # Kịch bản 3b (remote, dùng chung cho Spring Boot lẫn FastAPI)
 ├── ResultWriter.java               # Ghi CSV + JSON
 └── metrics/
     ├── MemoryProbe.java    # Thay thế VmRSS trên Windows
@@ -391,6 +441,11 @@ api/src/main/java/vn/huit/dl4j/api/
 
 api/src/main/resources/static/  # Web demo (HTML/CSS/JS thuần + Chart.js qua CDN)
 
+pyapi/                      # FastAPI (Python) - service doi chung cho kich ban 3
+├── app.py                  # POST /api/predict, /api/predict/batch (cung shape voi Spring Boot)
+├── model.py                # MLP PyTorch cung kien truc 30->32->16->2 (trong so random)
+└── requirements.txt
+
 scripts/
 ├── setup-env.ps1                       # JAVA_HOME/MAVEN_HOME/HADOOP_HOME/MAVEN_OPTS/thread-lock
 ├── run-training.ps1
@@ -399,16 +454,20 @@ scripts/
 ├── run-benchmark-1-repeated.ps1        # Kịch bản 1, lặp N lần + sampling Working Set theo epoch
 ├── aggregate-workspace-runs.ps1        # Gộp N lần chạy kịch bản 1 -> mean ± std
 ├── run-benchmark-2-spark-scaling.ps1   # Kịch bản 2 (đã lặp 3 lần x local[1,2,4,8] sẵn trong Java)
-├── run-benchmark-3-latency.ps1         # Kịch bản 3a + 3b
+├── run-benchmark-3-latency.ps1         # Kịch bản 3a + 3b (Spring Boot)
+├── build_latency_comparison.py         # Gộp in-process + Spring Boot + FastAPI -> bảng so sánh
 ├── summarize-results.ps1               # Gộp tất cả CSV -> results/summary.md
 ├── plot_workspace_results.py           # Vẽ PNG (matplotlib) cho kịch bản 1
+├── plot_spark_scaling_results.py       # Vẽ PNG (matplotlib) cho kịch bản 2
+├── plot_latency_comparison.py          # Vẽ PNG (matplotlib) cho kịch bản 3
 └── run-all.ps1                         # Tự động hoá build+train+kịch bản 1+2+tổng hợp
 
 results/
 ├── *.csv, *.json                # Kết quả từng kịch bản
-├── *_report_table.md            # Bảng mean ± std đã format sẵn (kịch bản 1, 2)
-├── workspace_runs/               # Dữ liệu thô từng lần chạy lặp (epoch_detail_run*.csv, os_samples_run*.csv)
-├── charts/                       # Biểu đồ PNG xuất bởi plot_workspace_results.py
+├── *_report_table.md            # Bảng mean ± std / so sánh đã format sẵn
+├── workspace_runs/               # Dữ liệu thô từng lần chạy lặp kịch bản 1
+├── latency_comparison.csv        # Bảng 3 tầng đã ghép (kịch bản 3)
+├── charts/                       # Toàn bộ biểu đồ PNG (3 kịch bản)
 └── summary.md                    # Tổng hợp toàn bộ, copy vào slide
 
 logs/                            # Log console đầy đủ của mỗi lần chạy (timestamped)

@@ -15,43 +15,56 @@ import java.util.Random;
 
 /**
  * Kich ban 3 (phan remote): do do tre khi goi API /api/predict (B=1) va
- * /api/predict/batch (B=8) qua HTTP, so sanh voi in-process trong InferenceLatencyBenchmark.
+ * /api/predict/batch (B>1) qua HTTP, quet qua nhieu batch size, so sanh voi
+ * in-process trong InferenceLatencyBenchmark. Dung chung cho ca Spring Boot
+ * (Java) va FastAPI (Python) - phan biet bang tham so <label>.
  *
- * YEU CAU: module `api` phai dang chay san (vd http://localhost:8080) truoc khi chay benchmark nay.
+ * YEU CAU: server dich (Spring Boot tren :8080 hoac FastAPI tren :8000) phai
+ * dang chay san truoc khi goi benchmark nay.
  *
  * Usage: mvn -pl benchmark exec:java -Dexec.mainClass=vn.huit.dl4j.benchmark.RemoteLatencyClient
- *        -Dexec.args="<baseUrl> <warmupIters> <measureIters>"
+ *        -Dexec.args="<baseUrl> <warmupIters> <measureIters> <label>"
+ *
+ * Vi du:
+ *   -Dexec.args="http://localhost:8080 20 200 springboot"
+ *   -Dexec.args="http://localhost:8000 20 200 fastapi"
  */
 public final class RemoteLatencyClient {
+
+    private static final int[] BATCH_SIZES = {1, 8, 16, 32, 64};
 
     public static void main(String[] args) throws Exception {
         String baseUrl = args.length > 0 ? args[0] : "http://localhost:8080";
         int warmup = args.length > 1 ? Integer.parseInt(args[1]) : 20;
         int measure = args.length > 2 ? Integer.parseInt(args[2]) : 200;
+        String label = args.length > 3 ? args[3] : "springboot";
 
         HttpClient client = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(5))
                 .build();
 
         List<Map<String, Object>> results = new ArrayList<>();
-        results.add(runBatch(client, baseUrl + "/api/predict", 1, warmup, measure));
-        results.add(runBatch(client, baseUrl + "/api/predict/batch", 8, warmup, measure));
+        for (int batchSize : BATCH_SIZES) {
+            String path = batchSize == 1 ? "/api/predict" : "/api/predict/batch";
+            results.add(runBatch(client, baseUrl + path, batchSize, warmup, measure, label));
+        }
 
         java.io.File outDir = new java.io.File("results");
-        List<String> header = List.of("mode", "batchSize", "meanMs", "p50Ms", "p99Ms", "minMs", "maxMs", "sampleCount");
+        List<String> header = List.of("mode", "batchSize", "meanMs", "p50Ms", "p99Ms", "minMs", "maxMs",
+                "throughputPerSec", "sampleCount");
         List<List<Object>> rows = new ArrayList<>();
         for (Map<String, Object> r : results) {
             rows.add(List.of(r.get("mode"), r.get("batchSize"), r.get("meanMs"), r.get("p50Ms"),
-                    r.get("p99Ms"), r.get("minMs"), r.get("maxMs"), r.get("sampleCount")));
+                    r.get("p99Ms"), r.get("minMs"), r.get("maxMs"), r.get("throughputPerSec"), r.get("sampleCount")));
         }
-        ResultWriter.writeCsv(new java.io.File(outDir, "inference_latency_remote.csv"), header, rows);
-        ResultWriter.writeJson(new java.io.File(outDir, "inference_latency_remote.json"), results);
+        ResultWriter.writeCsv(new java.io.File(outDir, "inference_latency_remote_" + label + ".csv"), header, rows);
+        ResultWriter.writeJson(new java.io.File(outDir, "inference_latency_remote_" + label + ".json"), results);
 
         results.forEach(System.out::println);
     }
 
     private static Map<String, Object> runBatch(HttpClient client, String url, int batchSize,
-                                                 int warmup, int measure) throws Exception {
+                                                 int warmup, int measure, String label) throws Exception {
         String body = randomFeaturesJson(batchSize);
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(url))
@@ -71,15 +84,17 @@ public final class RemoteLatencyClient {
         }
 
         LatencyStats.Result stats = LatencyStats.compute(samples);
+        double throughputPerSec = batchSize / (stats.meanMs() / 1000.0);
 
         return Map.of(
-                "mode", "remote",
+                "mode", "remote-" + label,
                 "batchSize", batchSize,
                 "meanMs", round(stats.meanMs()),
                 "p50Ms", round(stats.p50Ms()),
                 "p99Ms", round(stats.p99Ms()),
                 "minMs", round(stats.minMs()),
                 "maxMs", round(stats.maxMs()),
+                "throughputPerSec", round(throughputPerSec),
                 "sampleCount", stats.sampleCount()
         );
     }

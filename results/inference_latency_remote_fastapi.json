@@ -1,0 +1,7 @@
+[
+  {"p50Ms": 3.239, "minMs": 1.983, "meanMs": 3.641, "p99Ms": 7.974, "batchSize": 1, "mode": "remote-fastapi", "maxMs": 8.091, "throughputPerSec": 274.642, "sampleCount": 200},
+  {"p50Ms": 3.036, "minMs": 2.162, "meanMs": 3.205, "p99Ms": 6.34, "batchSize": 8, "mode": "remote-fastapi", "maxMs": 6.919, "throughputPerSec": 2495.978, "sampleCount": 200},
+  {"p50Ms": 2.967, "minMs": 2.265, "meanMs": 3.005, "p99Ms": 4.411, "batchSize": 16, "mode": "remote-fastapi", "maxMs": 4.798, "throughputPerSec": 5324.702, "sampleCount": 200},
+  {"p50Ms": 3.596, "minMs": 1.869, "meanMs": 4.3, "p99Ms": 18.885, "batchSize": 32, "mode": "remote-fastapi", "maxMs": 26.835, "throughputPerSec": 7441.991, "sampleCount": 200},
+  {"p50Ms": 4.104, "minMs": 2.181, "meanMs": 4.155, "p99Ms": 5.539, "batchSize": 64, "mode": "remote-fastapi", "maxMs": 5.785, "throughputPerSec": 15404.167, "sampleCount": 200}
+]
