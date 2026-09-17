@@ -247,7 +247,11 @@ Hai cách để xem biểu đồ thời gian/bộ nhớ theo từng epoch (kịc
    - `results/charts/workspace_time_per_epoch.png`
    - `results/charts/workspace_vmrss_per_epoch.png`
 
-   Mỗi ảnh vẽ đường trung bình ± dải ±1 độ lệch chuẩn cho cả 2 mode qua 15 epoch.
+   Mỗi ảnh vẽ đường trung bình ± dải ±1 độ lệch chuẩn cho cả 2 mode qua 15 epoch:
+
+   ![Thời gian train mỗi epoch - NONE vs ENABLED](results/charts/workspace_time_per_epoch.png)
+
+   ![VmRSS mỗi epoch - NONE vs ENABLED](results/charts/workspace_vmrss_per_epoch.png)
 
 2. **Trang tương tác (HTML)** — có hover xem giá trị chính xác từng epoch + bảng dữ liệu,
    dựng từ `results/workspace_chart_data.json` (sinh bởi cùng logic khớp timestamp, có thể
